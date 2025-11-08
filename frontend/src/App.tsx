@@ -13,6 +13,8 @@ import CloseIcon from "@mui/icons-material/Close";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { main } from "../wailsjs/go/models";
+import { EventsOn, LogInfo } from "../wailsjs/runtime";
+import { LoadTasks, SaveTasks } from "../wailsjs/go/main/App";
 import Editor from "./dialog/editor";
 import { renderMarkdownToHtml } from "./utils/markdown";
 import Confirm from "./dialog/confirm";
@@ -84,24 +86,21 @@ function App() {
 
   // 加载保存的任务
   useEffect(() => {
-    import("../wailsjs/go/main/App").then(({ LoadTasks }) => {
-      LoadTasks()
-        .then((savedTasks: Task[]) => {
-          setTasks(savedTasks);
-        })
-        .catch((error: Error) => {
-          console.error("Failed to load tasks:", error);
-        });
-    });
+    LoadTasks()
+      .then((savedTasks: Task[]) => {
+        setTasks(savedTasks);
+      })
+      .catch((error: Error) => {
+        console.error("Failed to load tasks:", error);
+      });
   }, []);
 
-  // 当任务发生变化时保存
   useEffect(() => {
-    import("../wailsjs/go/main/App").then(({ SaveTasks }) => {
+    if (tasks.length > 0) {
       SaveTasks(tasks).catch((error: Error) => {
         console.error("Failed to save tasks:", error);
       });
-    });
+    }
   }, [tasks]);
 
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
@@ -208,7 +207,7 @@ function App() {
     setOpenEditor(false);
   };
 
-  const deleteTask = (task: Task) => {
+  const completeTask = (task: Task) => {
     task.complete_time = Date.now();
     setTasks([...tasks]);
   };
@@ -348,7 +347,7 @@ function App() {
                   size="medium"
                   onClick={(e) => {
                     e.stopPropagation();
-                    deleteTask(task);
+                    completeTask(task);
                   }}
                   sx={{
                     position: "absolute",
@@ -554,6 +553,9 @@ function App() {
         onConfirm={() => {
           setTasks([]);
           setOpenDeleteDialog(false);
+          SaveTasks([]).catch((error: Error) => {
+            console.error("Failed to delete all tasks:", error);
+          });
         }}
         onCancel={() => setOpenDeleteDialog(false)}
       />
