@@ -4,35 +4,23 @@ import {
   Box,
   Paper,
   Typography,
-  TextField,
   Button,
   Card,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
-import { marked } from "marked";
-import DOMPurify from "dompurify";
+import EditIcon from "@mui/icons-material/Edit";
 import { main } from "../wailsjs/go/models";
-import * as runtime from "../wailsjs/runtime/runtime";
+import Editor from "./editor";
+import { renderMarkdownToHtml } from "./utils/markdown";
 type Task = main.Task;
-
-// Helper to render markdown safely (marked may return string or Promise<string> depending on build)
-const renderMarkdownToHtml = (s: string) => {
-  // Ensure we always pass a string to DOMPurify
-  const html = String(marked.parse(s || ""));
-  return DOMPurify.sanitize(html);
-};
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [newTaskContent, setNewTaskContent] = useState("");
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // 根据任务位置返回对应的颜色，颜色随 x、y 增大而加深
   const getTaskColor = (x: number, y: number) => {
@@ -114,15 +102,6 @@ function App() {
       });
     }
   }, [tasks]);
-
-  useEffect(() => {
-    if (openDialog) {
-      // 延迟一帧，确保 TextField 已挂载，然后 focus
-      requestAnimationFrame(() => {
-        inputRef.current?.focus();
-      });
-    }
-  }, [openDialog]);
 
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [dragStartPos, setDragStartPos] = useState<{
@@ -206,23 +185,38 @@ function App() {
     }
   };
 
-  const addTask = () => {
+  const submitTask = () => {
     if (!newTaskContent.trim()) return;
 
-    const newTask: Task = {
-      id: Date.now().toString(),
-      content: newTaskContent,
-      x: 0,
-      y: 0,
-    };
+    if (!editingTaskId) {
+      const newTask: Task = {
+        id: Date.now().toString(),
+        content: newTaskContent,
+        x: 50,
+        y: 50,
+      };
 
-    setTasks([...tasks, newTask]);
+      setTasks([...tasks, newTask]);
+    } else {
+      tasks.forEach((task) => {
+        if (task.id == editingTaskId) {
+          task.content = newTaskContent;
+        }
+      });
+      setTasks([...tasks]);
+    }
     setNewTaskContent("");
     setOpenDialog(false);
   };
 
   const deleteTask = (taskId: string) => {
     setTasks(tasks.filter((task) => task.id !== taskId));
+  };
+
+  const editTask = (taskId: string) => {
+    setOpenDialog(true);
+    setEditingTaskId(taskId);
+    setNewTaskContent(tasks.find((task) => task.id === taskId)?.content || "");
   };
 
   return (
@@ -325,13 +319,13 @@ function App() {
                   draggingTaskId === task.id ? "none" : "all 0.2s ease-in-out",
                 userSelect: "none",
                 cursor: "move",
-                "&:hover .delete-button": {
+                "&:hover .card-click-button": {
                   opacity: 0.8,
                 },
               }}
             >
               <IconButton
-                className="delete-button"
+                className="card-click-button"
                 size="medium"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -346,7 +340,7 @@ function App() {
                   transition: "opacity 0.2s ease-in-out",
                   "& .MuiSvgIcon-root": {
                     fontSize: "0.875rem",
-                    color: "#f44336",
+                    color: "#000000",
                   },
                   "&:hover": {
                     backgroundColor: "rgba(244, 67, 54, 0.1)",
@@ -354,6 +348,31 @@ function App() {
                 }}
               >
                 <CloseIcon fontSize="small" />
+              </IconButton>
+              <IconButton
+                className="card-click-button"
+                size="medium"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  editTask(task.id);
+                }}
+                sx={{
+                  position: "absolute",
+                  right: "4px",
+                  bottom: "4px",
+                  padding: 0.2,
+                  opacity: 0,
+                  transition: "opacity 0.2s ease-in-out",
+                  "& .MuiSvgIcon-root": {
+                    fontSize: "0.875rem",
+                    color: "#000000",
+                  },
+                  "&:hover": {
+                    backgroundColor: "rgba(244, 67, 54, 0.1)",
+                  },
+                }}
+              >
+                <EditIcon fontSize="small" />
               </IconButton>
               <Box
                 sx={{
@@ -495,142 +514,18 @@ function App() {
       </Paper>
 
       {/* 添加任务对话框 */}
-      <Dialog
+      <Editor
         open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        fullWidth
-        maxWidth="md"
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
-            width: "80vw",
-            maxWidth: 1000,
-            minHeight: 360,
-            p: 1,
-          },
+        taskId={editingTaskId}
+        taskContent={newTaskContent}
+        onClose={() => {
+          setOpenDialog(false);
+          setEditingTaskId(null);
+          setNewTaskContent("");
         }}
-      >
-        <DialogTitle sx={{ color: "#1a237e", fontWeight: "bold" }}>
-          添加新任务
-        </DialogTitle>
-        <DialogContent>
-          <Box
-            sx={{
-              display: "flex",
-              gap: 2,
-              alignItems: "stretch",
-              minWidth: "60vw",
-              maxWidth: "90vw",
-            }}
-          >
-            <Box sx={{ flex: 1 }}>
-              <TextField
-                margin="dense"
-                inputRef={inputRef}
-                label="任务内容（支持 Markdown）"
-                placeholder="TODO..."
-                fullWidth
-                multiline
-                rows={6}
-                value={newTaskContent}
-                onChange={(e) => setNewTaskContent(e.target.value)}
-                onKeyDown={(e: any) => {
-                  // Enter 换行，Cmd/Ctrl+Enter 提交任务
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                    e.preventDefault();
-                    addTask();
-                  }
-                }}
-                variant="outlined"
-                InputLabelProps={{
-                  shrink: true,
-                }}
-                sx={{
-                  mt: 1,
-                  "& .MuiOutlinedInput-root": {
-                    "&:hover fieldset": {
-                      borderColor: "#1a237e",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#1a237e",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#1a237e",
-                  },
-                }}
-              />
-              <Typography
-                variant="caption"
-                sx={{ color: "text.secondary", mt: 1 }}
-              >
-                Enter 换行，Cmd/Ctrl+Enter 提交
-              </Typography>
-            </Box>
-
-            <Paper
-              variant="outlined"
-              sx={{
-                flex: 1,
-                p: 2,
-                backgroundColor: "#fafafa",
-                maxHeight: 420,
-                overflow: "auto",
-              }}
-            >
-              <Typography variant="subtitle2" sx={{ mb: 1, color: "#1a237e" }}>
-                实时预览
-              </Typography>
-              <Box
-                sx={{
-                  textAlign: "left",
-                  "& > *": { textAlign: "left" },
-                  "& img": { maxWidth: "100%" },
-                  "& ul, & ol": {
-                    paddingLeft: "1.2em",
-                    margin: "0.5em 0",
-                    listStylePosition: "outside",
-                  },
-                  "& li": {
-                    display: "list-item",
-                    paddingLeft: "0.3em",
-                    marginBottom: "0.3em",
-                  },
-                }}
-                dangerouslySetInnerHTML={{
-                  __html: renderMarkdownToHtml(newTaskContent || ""),
-                }}
-              />
-            </Paper>
-          </Box>
-        </DialogContent>
-        <DialogActions sx={{ p: 2 }}>
-          <Button
-            onClick={() => setOpenDialog(false)}
-            sx={{
-              color: "#1a237e",
-              "&:hover": {
-                backgroundColor: "rgba(26, 35, 126, 0.1)",
-              },
-            }}
-          >
-            取消
-          </Button>
-          <Button
-            onClick={addTask}
-            variant="contained"
-            sx={{
-              backgroundColor: "#1a237e",
-              "&:hover": {
-                backgroundColor: "#0d47a1",
-              },
-            }}
-          >
-            添加
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onTaskContentChange={(content) => setNewTaskContent(content)}
+        onSubmit={submitTask}
+      />
     </Box>
   );
 }
