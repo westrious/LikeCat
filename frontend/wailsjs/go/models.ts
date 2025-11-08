@@ -5,6 +5,7 @@ export namespace main {
 	    content: string;
 	    x: number;
 	    y: number;
+	    width?: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Task(source);
@@ -16,6 +17,7 @@ export namespace main {
 	        this.content = source["content"];
 	        this.x = source["x"];
 	        this.y = source["y"];
+	        this.width = source["width"];
 	    }
 	}
 

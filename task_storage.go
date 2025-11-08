@@ -12,6 +12,7 @@ type Task struct {
 	Content string  `json:"content"`
 	X       float64 `json:"x"`
 	Y       float64 `json:"y"`
+	Width   float64 `json:"width,omitempty"`
 }
 
 // TaskStorage manages task persistence
