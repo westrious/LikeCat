@@ -18,7 +18,7 @@ type Task = main.Task;
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [newTaskContent, setNewTaskContent] = useState("");
 
@@ -188,35 +188,34 @@ function App() {
   const submitTask = () => {
     if (!newTaskContent.trim()) return;
 
-    if (!editingTaskId) {
+    if (!editingTask) {
       const newTask: Task = {
         id: Date.now().toString(),
         content: newTaskContent,
         x: 50,
         y: 50,
+        create_time: Date.now(),
+        complete_time: 0,
       };
 
       setTasks([...tasks, newTask]);
     } else {
-      tasks.forEach((task) => {
-        if (task.id == editingTaskId) {
-          task.content = newTaskContent;
-        }
-      });
+      editingTask.content = newTaskContent;
       setTasks([...tasks]);
     }
     setNewTaskContent("");
     setOpenDialog(false);
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(tasks.filter((task) => task.id !== taskId));
+  const deleteTask = (task: Task) => {
+    task.complete_time = Date.now();
+    setTasks([...tasks]);
   };
 
-  const editTask = (taskId: string) => {
+  const editTask = (task: Task) => {
     setOpenDialog(true);
-    setEditingTaskId(taskId);
-    setNewTaskContent(tasks.find((task) => task.id === taskId)?.content || "");
+    setEditingTask(task);
+    setNewTaskContent(task.content || "");
   };
 
   return (
@@ -285,147 +284,151 @@ function App() {
             overflow: "visible",
           }}
         >
-          {tasks.map((task) => (
-            <Card
-              key={task.id}
-              ref={(el) => {
-                cardRefs.current[task.id] = el;
-              }}
-              draggable
-              onDragStart={(e) => handleDragStart(e, task.id)}
-              onDrag={handleDrag}
-              onDragEnd={handleDragEnd}
-              sx={{
-                position: "absolute",
-                left: `${task.x}%`,
-                top: `${100 - task.y}%`, // y 越大越靠上，但 CSS 中 top 越小越靠上
-                transform: "translate(-50%, -50%)",
-                display: "inline-block",
-                minWidth: 80,
-                maxWidth: "none",
-                width: "fit-content",
-                flexShrink: 0,
-                boxSizing: "border-box",
-                p: 1.5,
-                pt: 1.5,
-                ...getTaskColor(task.x, task.y),
-                // prevent content from wrapping, width adapts to content
-                whiteSpace: "nowrap",
-                overflow: "visible",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                zIndex: 2,
-                borderRadius: 1.5,
-                transition:
-                  draggingTaskId === task.id ? "none" : "all 0.2s ease-in-out",
-                userSelect: "none",
-                cursor: "move",
-                "&:hover .card-click-button": {
-                  opacity: 0.8,
-                },
-              }}
-            >
-              <IconButton
-                className="card-click-button"
-                size="medium"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteTask(task.id);
+          {tasks.map((task) =>
+            task.complete_time <= 0 ? (
+              <Card
+                key={task.id}
+                ref={(el) => {
+                  cardRefs.current[task.id] = el;
                 }}
+                draggable
+                onDragStart={(e) => handleDragStart(e, task.id)}
+                onDrag={handleDrag}
+                onDragEnd={handleDragEnd}
                 sx={{
                   position: "absolute",
-                  right: "4px",
-                  top: "4px",
-                  padding: 0.2,
-                  opacity: 0,
-                  transition: "opacity 0.2s ease-in-out",
-                  "& .MuiSvgIcon-root": {
-                    fontSize: "0.875rem",
-                    color: "#000000",
-                  },
-                  "&:hover": {
-                    backgroundColor: "rgba(244, 67, 54, 0.1)",
-                  },
-                }}
-              >
-                <CloseIcon fontSize="small" />
-              </IconButton>
-              <IconButton
-                className="card-click-button"
-                size="medium"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  editTask(task.id);
-                }}
-                sx={{
-                  position: "absolute",
-                  right: "4px",
-                  bottom: "4px",
-                  padding: 0.2,
-                  opacity: 0,
-                  transition: "opacity 0.2s ease-in-out",
-                  "& .MuiSvgIcon-root": {
-                    fontSize: "0.875rem",
-                    color: "#000000",
-                  },
-                  "&:hover": {
-                    backgroundColor: "rgba(244, 67, 54, 0.1)",
-                  },
-                }}
-              >
-                <EditIcon fontSize="small" />
-              </IconButton>
-              <Box
-                sx={{
-                  width: "auto",
-                  mt: 0.5,
-                  fontSize: "0.9rem",
-                  color: "inherit",
+                  left: `${task.x}%`,
+                  top: `${100 - task.y}%`, // y 越大越靠上，但 CSS 中 top 越小越靠上
+                  transform: "translate(-50%, -50%)",
+                  display: "inline-block",
+                  minWidth: 80,
+                  maxWidth: "none",
+                  width: "fit-content",
+                  flexShrink: 0,
+                  boxSizing: "border-box",
+                  p: 1.5,
+                  pt: 1.5,
+                  ...getTaskColor(task.x, task.y),
+                  // prevent content from wrapping, width adapts to content
                   whiteSpace: "nowrap",
-                  "& > div": {
-                    textAlign: "left",
+                  overflow: "visible",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                  zIndex: 2,
+                  borderRadius: 1.5,
+                  transition:
+                    draggingTaskId === task.id
+                      ? "none"
+                      : "all 0.2s ease-in-out",
+                  userSelect: "none",
+                  cursor: "move",
+                  "&:hover .card-click-button": {
+                    opacity: 0.8,
+                  },
+                }}
+              >
+                <IconButton
+                  className="card-click-button"
+                  size="medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteTask(task);
+                  }}
+                  sx={{
+                    position: "absolute",
+                    right: "4px",
+                    top: "4px",
+                    padding: 0.2,
+                    opacity: 0,
+                    transition: "opacity 0.2s ease-in-out",
+                    "& .MuiSvgIcon-root": {
+                      fontSize: "0.875rem",
+                      color: "#000000",
+                    },
+                    "&:hover": {
+                      backgroundColor: "rgba(244, 67, 54, 0.1)",
+                    },
+                  }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+                <IconButton
+                  className="card-click-button"
+                  size="medium"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    editTask(task);
+                  }}
+                  sx={{
+                    position: "absolute",
+                    right: "4px",
+                    bottom: "4px",
+                    padding: 0.2,
+                    opacity: 0,
+                    transition: "opacity 0.2s ease-in-out",
+                    "& .MuiSvgIcon-root": {
+                      fontSize: "0.875rem",
+                      color: "#000000",
+                    },
+                    "&:hover": {
+                      backgroundColor: "rgba(244, 67, 54, 0.1)",
+                    },
+                  }}
+                >
+                  <EditIcon fontSize="small" />
+                </IconButton>
+                <Box
+                  sx={{
+                    width: "auto",
+                    mt: 0.5,
+                    fontSize: "0.9rem",
+                    color: "inherit",
                     whiteSpace: "nowrap",
-                    "& > *": {
+                    "& > div": {
                       textAlign: "left",
                       whiteSpace: "nowrap",
+                      "& > *": {
+                        textAlign: "left",
+                        whiteSpace: "nowrap",
+                      },
+                      "& ul, & ol": {
+                        margin: "0.3em 0",
+                        listStylePosition: "inside",
+                        whiteSpace: "nowrap",
+                      },
+                      "& li": {
+                        display: "list-item",
+                        paddingLeft: "0.3em",
+                        marginBottom: "0.2em",
+                        whiteSpace: "nowrap",
+                      },
+                      "& p": {
+                        margin: "0.3em 0",
+                        whiteSpace: "nowrap",
+                      },
+                      "& a": {
+                        color: "inherit",
+                        textDecoration: "underline",
+                        whiteSpace: "nowrap",
+                      },
+                      "& code": {
+                        backgroundColor: "rgba(0, 0, 0, 0.05)",
+                        padding: "0.1em 0.2em",
+                        borderRadius: "2px",
+                        fontSize: "0.9em",
+                        whiteSpace: "nowrap",
+                      },
                     },
-                    "& ul, & ol": {
-                      margin: "0.3em 0",
-                      listStylePosition: "inside",
-                      whiteSpace: "nowrap",
-                    },
-                    "& li": {
-                      display: "list-item",
-                      paddingLeft: "0.3em",
-                      marginBottom: "0.2em",
-                      whiteSpace: "nowrap",
-                    },
-                    "& p": {
-                      margin: "0.3em 0",
-                      whiteSpace: "nowrap",
-                    },
-                    "& a": {
-                      color: "inherit",
-                      textDecoration: "underline",
-                      whiteSpace: "nowrap",
-                    },
-                    "& code": {
-                      backgroundColor: "rgba(0, 0, 0, 0.05)",
-                      padding: "0.1em 0.2em",
-                      borderRadius: "2px",
-                      fontSize: "0.9em",
-                      whiteSpace: "nowrap",
-                    },
-                  },
-                }}
-              >
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: renderMarkdownToHtml(task.content || ""),
                   }}
-                />
-              </Box>
-            </Card>
-          ))}
+                >
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: renderMarkdownToHtml(task.content || ""),
+                    }}
+                  />
+                </Box>
+              </Card>
+            ) : null
+          )}
         </Box>
 
         {/* 象限分隔线 */}
@@ -516,11 +519,11 @@ function App() {
       {/* 添加任务对话框 */}
       <Editor
         open={openDialog}
-        taskId={editingTaskId}
+        task={editingTask}
         taskContent={newTaskContent}
         onClose={() => {
           setOpenDialog(false);
-          setEditingTaskId(null);
+          setEditingTask(null);
           setNewTaskContent("");
         }}
         onTaskContentChange={(content) => setNewTaskContent(content)}

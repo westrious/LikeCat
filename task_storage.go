@@ -8,10 +8,12 @@ import (
 
 // Task represents a task in the priority matrix
 type Task struct {
-	ID      string  `json:"id"`
-	Content string  `json:"content"`
-	X       float64 `json:"x"`
-	Y       float64 `json:"y"`
+	ID           string  `json:"id"`
+	Content      string  `json:"content"`
+	X            float64 `json:"x"`
+	Y            float64 `json:"y"`
+	CreateTime   int64   `json:"create_time"`   // 单位 ms
+	CompleteTime int64   `json:"complete_time"` // 单位 ms
 }
 
 // TaskStorage manages task persistence

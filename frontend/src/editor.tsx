@@ -11,17 +11,18 @@ import {
   DialogActions,
 } from "@mui/material";
 import { renderMarkdownToHtml } from "./utils/markdown";
+import { main } from "../wailsjs/go/models";
 
 function Editor({
   open,
-  taskId,
+  task,
   taskContent,
   onClose,
   onTaskContentChange,
   onSubmit,
 }: {
   open: boolean;
-  taskId: string | null;
+  task: main.Task | null;
   taskContent: string;
   onClose: () => void;
   onTaskContentChange: (content: string) => void;
@@ -53,15 +54,26 @@ function Editor({
           borderRadius: 2,
           boxShadow: "0 4px 20px rgba(0,0,0,0.1)",
           width: "80vw",
-          maxWidth: 1000,
+          maxWidth: 2000,
           minHeight: 360,
           p: 1,
         },
       }}
     >
       <DialogTitle sx={{ color: "#1a237e", fontWeight: "bold" }}>
-        {taskId ? "编辑任务" : "添加新任务"}
+        {task ? "编辑任务" : "添加新任务"}
       </DialogTitle>
+      {task ? (
+        <Typography
+          sx={{
+            color: "text.secondary",
+            fontSize: "0.7rem",
+            marginTop: "-1rem",
+          }}
+        >
+          创建时间：{new Date(task.create_time).toLocaleString()}
+        </Typography>
+      ) : null}
       <DialogContent>
         <Box
           sx={{
@@ -175,7 +187,7 @@ function Editor({
             },
           }}
         >
-          {taskId ? "保存" : "添加"}
+          {task ? "保存" : "添加"}
         </Button>
       </DialogActions>
     </Dialog>
