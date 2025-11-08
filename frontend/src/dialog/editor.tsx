@@ -10,8 +10,8 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import { renderMarkdownToHtml } from "./utils/markdown";
-import { main } from "../wailsjs/go/models";
+import { renderMarkdownToHtml } from "../utils/markdown";
+import { main } from "../../wailsjs/go/models";
 
 function Editor({
   open,

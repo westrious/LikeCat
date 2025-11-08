@@ -10,17 +10,20 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import { main } from "../wailsjs/go/models";
-import Editor from "./editor";
+import Editor from "./dialog/editor";
 import { renderMarkdownToHtml } from "./utils/markdown";
+import Confirm from "./dialog/confirm";
 type Task = main.Task;
 
 function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [openDialog, setOpenDialog] = useState(false);
+  const [openEditor, setOpenEditor] = useState(false);
   const [newTaskContent, setNewTaskContent] = useState("");
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   // 根据任务位置返回对应的颜色，颜色随 x、y 增大而加深
   const getTaskColor = (x: number, y: number) => {
@@ -94,13 +97,11 @@ function App() {
 
   // 当任务发生变化时保存
   useEffect(() => {
-    if (tasks.length > 0) {
-      import("../wailsjs/go/main/App").then(({ SaveTasks }) => {
-        SaveTasks(tasks).catch((error: Error) => {
-          console.error("Failed to save tasks:", error);
-        });
+    import("../wailsjs/go/main/App").then(({ SaveTasks }) => {
+      SaveTasks(tasks).catch((error: Error) => {
+        console.error("Failed to save tasks:", error);
       });
-    }
+    });
   }, [tasks]);
 
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
@@ -204,7 +205,7 @@ function App() {
       setTasks([...tasks]);
     }
     setNewTaskContent("");
-    setOpenDialog(false);
+    setOpenEditor(false);
   };
 
   const deleteTask = (task: Task) => {
@@ -213,7 +214,7 @@ function App() {
   };
 
   const editTask = (task: Task) => {
-    setOpenDialog(true);
+    setOpenEditor(true);
     setEditingTask(task);
     setNewTaskContent(task.content || "");
   };
@@ -237,21 +238,37 @@ function App() {
         任务优先级矩阵
       </Typography>
 
-      <Button
-        variant="contained"
-        startIcon={<AddIcon />}
-        onClick={() => setOpenDialog(true)}
-        sx={{
-          mb: 2,
-          alignSelf: "flex-start",
-          backgroundColor: "#1a237e",
-          "&:hover": {
-            backgroundColor: "#0d47a1",
-          },
-        }}
-      >
-        添加任务
-      </Button>
+      <Box sx={{ mb: 2, display: "flex", alignItems: "center" }}>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setOpenEditor(true)}
+          sx={{
+            alignSelf: "flex-start",
+            backgroundColor: "#1a237e",
+            "&:hover": {
+              backgroundColor: "#0d47a1",
+            },
+          }}
+        >
+          添加任务
+        </Button>
+
+        <Button
+          variant="contained"
+          startIcon={<DeleteIcon />}
+          onClick={() => setOpenDeleteDialog(true)}
+          sx={{
+            marginLeft: "auto",
+            backgroundColor: "#c21919",
+            "&:hover": {
+              backgroundColor: "#dc3545",
+            },
+          }}
+        >
+          一键清空
+        </Button>
+      </Box>
 
       <Paper
         id="matrix-container"
@@ -518,16 +535,27 @@ function App() {
 
       {/* 添加任务对话框 */}
       <Editor
-        open={openDialog}
+        open={openEditor}
         task={editingTask}
         taskContent={newTaskContent}
         onClose={() => {
-          setOpenDialog(false);
+          setOpenEditor(false);
           setEditingTask(null);
           setNewTaskContent("");
         }}
         onTaskContentChange={(content) => setNewTaskContent(content)}
         onSubmit={submitTask}
+      />
+
+      {/* 删除确认弹窗 */}
+      <Confirm
+        open={openDeleteDialog}
+        content="确定要删除所有任务吗？"
+        onConfirm={() => {
+          setTasks([]);
+          setOpenDeleteDialog(false);
+        }}
+        onCancel={() => setOpenDeleteDialog(false)}
       />
     </Box>
   );
